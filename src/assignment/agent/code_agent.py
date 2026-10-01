@@ -48,8 +48,32 @@ class CodeAgent(Agent):
 
         # TODO(1.1.b): Construct the system prompt and task_prompt. These
         # should be usable by the `Agent.build_prompt` method.
+        self.task_prompt = self.task
+        sys_info = json.dumps(
+        {
+            "machine": self.env.machine,
+            "release": self.env.release,
+            "system": self.env.system,
+            "version": self.env.version,
+        },
+        indent=2,
+        )
+        self.system_prompt = (
+            "You are a helpful software engineer assistant. You have access to bash "
+            "terminal tools to investigate, reproduce, and fix software issues in the repository. "
+            "Work inside the testbed, verify your fix with tests, and ensure you submit your work.\n\n"
+            f"<system_information>\n{sys_info}\n</system_information>"
+        )
+
+
         # TODO(1.4): If any skills are available to the agent, make their
         # descriptions/metadata available to the agent in the prompt.
+
+        if self.skills: 
+            catalog = "\n".join(skill["metadata"] for skill in self.skills.values())
+            self.system_prompt += ( "\n\nReusable skills are available. Call `invoke_skill` with a skill's name "
+        f"to load its instructions, and follow them in place of your default approach.\n\n"
+        f"<skills>\n{catalog}\n</skills>\n")
 
     def execute_tool_calls(
         self, tool_calls: list[dict[str, Any]]

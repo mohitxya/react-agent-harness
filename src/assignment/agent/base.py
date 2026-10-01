@@ -339,13 +339,23 @@ class Agent:
             # step. Ensure you identify when the agent has completed the task
             # by setting `Agent.finished`. If the agent exceeds the
             # `step_limit`, raise `StepLimitError`.
+            while not self.finished: 
+                if self.steps_taken >= self.step_limit: 
+                    raise StepLimitError(f"Exceeded step limit of {self.step_limit}")
+                message = self.query_language_model()
+                tool_calls = message.get("tool_calls")
+                if tool_calls:
+                    self.messages.append(message)
+                    observations = self.execute_tool_calls(tool_calls)
+                    self.messages.extend(observations)
+                else:
+                    self.messages.append(message)
 
             # TODO(2.2) Call `maybe_compact_context()` before each new action
             # request in your shared loop. It already estimates active tokens
             # and handles the threshold, and tracks compaction events for
             # logging.
 
-            raise NotImplementedError
         finally:
             # This block is provided infrastructure. Do not modify it: a
             # trajectory is required even when a run fails.
