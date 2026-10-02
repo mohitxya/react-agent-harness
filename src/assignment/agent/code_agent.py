@@ -9,7 +9,9 @@ from assignment.agent.base import (
     DEFAULT_COMPACTION_KEEP_RECENT_STEPS,
     DEFAULT_COMPACTION_MAX_TOKENS,
     Agent,
+    format_tool_output,
 )
+
 from assignment.agent.tools import EXECUTE_TOOL, SEND_MESSAGE_TOOL
 from assignment.env import Environment
 
@@ -45,6 +47,7 @@ class CodeAgent(Agent):
 
         # TODO(Part 1.3): Make the `execute` and `send_message` tools available
         # to the agent.
+        self.tools.extend([EXECUTE_TOOL, SEND_MESSAGE_TOOL])
 
         # TODO(1.1.b): Construct the system prompt and task_prompt. These
         # should be usable by the `Agent.build_prompt` method.
@@ -84,4 +87,60 @@ class CodeAgent(Agent):
         # one message per call (there may be multiple tool calls in one agent
         # response!). Malformed JSON and unknown tools must become recoverable
         # observations relayed to the agent instead of exceptions.
-        raise NotImplementedError
+        observations: list[dict[str, str]] = []
+        for call in tool_calls:
+            call_id = call.get("id", "")
+            func = call.get("function", {})
+            name = func.get("name", "")
+            raw_args = func.get("arguments", "{}")
+            # 1. Safely parse JSON arguments
+            try:
+                if isinstance(raw_args, str):
+                    args = json.loads(raw_args)
+                elif isinstance(raw_args, dict):
+                    args = raw_args
+                else:
+                    args = {}
+                if not isinstance(args, dict):
+                    raise ValueError("Tool arguments must be a JSON object.")
+            except Exception as exc:
+                observations.append({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": f"<error>Malformed arguments: {exc}</error>",
+                })
+                continue
+            # 2. Dispatch on tool name
+            if name == "execute":
+                command = args.get("command")
+                if command is None:
+                    content = "<error>Missing required 'command' argument</error>"
+                else:
+                    result = self.env.execute(
+                        command=command,
+                        cwd=args.get("cwd"),
+                        env=args.get("env"),
+                        timeout=args.get("timeout"),
+                        shell=args.get("shell"),
+                    )
+                    content = format_tool_output(result)
+            elif name == "send_message":
+                summary = args.get("summary", "")
+                self.submitted_patch = summary
+                self.finished = True
+                content = f"<message_sent>{summary}</message_sent>"
+            elif name == "invoke_skill":
+                skill_name = args.get("name", "")
+                if skill_name in self.skills:
+                    content = self.skills[skill_name]["content"]
+                else:
+                    content = f"<error>Skill '{skill_name}' not found</error>"
+            else:
+                content = f"<error>Unknown tool: {name}</error>"
+            # 3. Link the observation to this call ID
+            observations.append({
+                "role": "tool",
+                "tool_call_id": call_id,
+                "content": content,
+            })
+        return observations

@@ -5,7 +5,7 @@ supply only their own tools and tool executors.
 """
 
 from __future__ import annotations
-
+import yaml
 from copy import deepcopy
 import json
 import logging
@@ -166,7 +166,41 @@ class Agent:
         # ``content`` of the skill file for ``invoke_skill``. Reject duplicate
         # names and malformed or missing frontmatter with a clear
         # ``ValueError``.
-        raise NotImplementedError
+        if not skills_path.is_dir():
+            raise ValueError(f"Skills path is not a directory: {skills_path}")
+        skills: dict[str, dict[str, str]] = {}
+        for child in sorted(skills_path.iterdir()):
+            if not child.is_dir():
+                continue
+            skill_file = child / "SKILL.md"
+            if not skill_file.is_file():
+                continue
+            content = skill_file.read_text()
+            # Frontmatter must start with ---
+            if not content.startswith("---"):
+                raise ValueError(f"Missing YAML frontmatter in {skill_file}")
+            # Split on --- markers
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                raise ValueError(f"Malformed YAML frontmatter in {skill_file}")
+            try:
+                frontmatter = yaml.safe_load(parts[1])
+            except Exception as exc:
+                raise ValueError(f"Invalid YAML in {skill_file}: {exc}") from exc
+            if not isinstance(frontmatter, dict):
+                raise ValueError(f"Frontmatter is not a dictionary in {skill_file}")
+            name = frontmatter.get("name")
+            description = frontmatter.get("description")
+            if not name or not description:
+                raise ValueError(f"Missing name or description in {skill_file}")
+            if name in skills:
+                raise ValueError(f"Duplicate skill name '{name}' in {skill_file}")
+            metadata = f"name: {name}\ndescription: {description}"
+            skills[name] = {
+                "metadata": metadata,
+                "content": content,
+            }
+        return skills
 
     def query_language_model(self) -> dict[str, Any]:
         """Send one tool-enabled Chat Completions request and normalize it."""
