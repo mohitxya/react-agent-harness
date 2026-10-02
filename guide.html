@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Architecture of an Autonomous AI Agent Harness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-tertiary: #1f2937;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(31, 41, 55, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(59, 130, 246, 0.3);
+      --border-glow: rgba(99, 102, 241, 0.4);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --accent-blue: #3b82f6;
+      --accent-indigo: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-code: 'Fira Code', monospace;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.65;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* Layout structure */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: 300px;
+      background: rgba(11, 15, 25, 0.92);
+      backdrop-filter: blur(16px);
+      border-right: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 1.1rem;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-text h1 {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #fff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .nav-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .nav-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 700;
+      margin: 0.75rem 0 0.35rem 0.5rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-subtle);
+    }
+
+    .nav-item.active {
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), rgba(59, 130, 246, 0.05));
+      border-color: var(--border-accent);
+      color: var(--accent-cyan);
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    /* Main Content Area */
+    .content-area {
+      flex: 1;
+      padding: 3rem 4rem 6rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Hero Banner */
+    .hero {
+      position: relative;
+      background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 3.5rem 3rem;
+      margin-bottom: 3.5rem;
+      overflow: hidden;
+      box-shadow: var(--shadow-subtle);
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: var(--accent-cyan);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-heading);
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 40%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-lead {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 750px;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1.75rem;
+    }
+
+    .stat-item h3 {
+      font-family: var(--font-heading);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stat-item p {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Section Styles */
+    .guide-section {
+      margin-bottom: 4.5rem;
+      scroll-margin-top: 3rem;
+    }
+
+    .section-header {
+      margin-bottom: 2rem;
+    }
+
+    .section-eyebrow {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-cyan);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-header h2 {
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 800px;
+    }
+
+    /* Feynman Technique Callout Box */
+    .feynman-box {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(17, 24, 39, 0.7));
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-left: 4px solid var(--accent-amber);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      margin: 1.75rem 0;
+      position: relative;
+    }
+
+    .feynman-title {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent-amber);
+      margin-bottom: 0.75rem;
+    }
+
+    .feynman-content {
+      color: #e5e7eb;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .feynman-content strong {
+      color: #fff;
+    }
+
+    /* Component Card Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.75rem;
+      margin: 1.75rem 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin: 1.75rem 0;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .icon-blue { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+    .icon-emerald { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
+    .icon-purple { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+    .icon-amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+    .icon-cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
+    .icon-rose { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); }
+
+    .card h3 {
+      font-family: var(--font-heading);
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* Interactive Diagrams & Animation Stage */
+    .interactive-stage {
+      background: #0d121f;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 2.25rem;
+      margin: 2.25rem 0;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .stage-header h4 {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .stage-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .stage-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.45rem 0.95rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .stage-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    .stage-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    /* SVG Diagram Canvas */
+    .svg-diagram-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 380px;
+    }
+
+    svg.diagram {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Animated Pulses in SVG */
+    @keyframes dashPulse {
+      to {
+        stroke-dashoffset: -40;
+      }
+    }
+
+    @keyframes nodeGlow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4)); }
+      50% { filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.8)); }
+    }
+
+    .animated-path {
+      stroke-dasharray: 8, 4;
+      animation: dashPulse 1.5s linear infinite;
+    }
+
+    .animated-node {
+      animation: nodeGlow 3s ease-in-out infinite;
+    }
+
+    /* Code Blocks & Tabs */
+    .code-container {
+      background: #090d16;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .code-header {
+      background: #111726;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .code-filename {
+      font-family: var(--font-code);
+      font-size: 0.8rem;
+      color: var(--accent-cyan);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .code-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    pre.code-block {
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: var(--font-code);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+    }
+
+    /* Syntax Highlighting Tokens */
+    .kwd { color: #f43f5e; font-weight: 600; }
+    .fn { color: #60a5fa; font-weight: 500; }
+    .str { color: #34d399; }
+    .cls { color: #f59e0b; font-weight: 600; }
+    .num { color: #a78bfa; }
+    .cmt { color: #64748b; font-style: italic; }
+    .var { color: #cbd5e1; }
+    .tag { color: #38bdf8; }
+
+    /* Interactive Stepper */
+    .stepper-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.4rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .step-btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .step-btn.active {
+      background: var(--bg-tertiary);
+      color: #fff;
+      border: 1px solid var(--border-accent);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .step-pane {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .step-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Comparison Table */
+    .styled-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+
+    .styled-table th, .styled-table td {
+      padding: 1rem 1.25rem;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    .styled-table th {
+      background: #111827;
+      color: #fff;
+      font-family: var(--font-heading);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .styled-table tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .styled-table td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+    }
+
+    .styled-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Interactive Knowledge Check Widget */
+    .quiz-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(17, 24, 39, 0.85));
+      border: 1px solid var(--border-glow);
+      border-radius: var(--radius-xl);
+      padding: 2.25rem;
+      margin: 2.5rem 0;
+    }
+
+    .quiz-title {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+    }
+
+    .quiz-opt {
+      padding: 1rem 1.25rem;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .quiz-opt:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--border-accent);
+    }
+
+    .quiz-opt.correct {
+      background: rgba(16, 185, 129, 0.15) !important;
+      border-color: var(--accent-emerald) !important;
+      color: #6ee7b7;
+    }
+
+    .quiz-opt.wrong {
+      background: rgba(244, 63, 94, 0.15) !important;
+      border-color: var(--accent-rose) !important;
+      color: #fca5a5;
+    }
+
+    .quiz-feedback {
+      display: none;
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      margin-top: 1rem;
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 3rem 0;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .sidebar { display: none; }
+      .content-area { padding: 2rem 1.5rem; }
+      .hero h1 { font-size: 2.2rem; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .hero-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Interactive Navigation Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">&#x26A1;</div>
+      <div class="brand-text">
+        <h1>Agent Harness</h1>
+        <p>Interactive Guide</p>
+      </div>
+    </div>
+
+    <nav class="nav-sections">
+      <div class="nav-label">Core Architecture</div>
+      <a href="#philosophy" class="nav-item active">
+        <span>&#x1F9E0;</span> Feynman Mental Model
+      </a>
+      <a href="#react-loop" class="nav-item">
+        <span>&#x1F504;</span> The ReAct Engine
+      </a>
+      <a href="#sandboxing" class="nav-item">
+        <span>&#x1F6E1;</span> Modal Cloud Sandboxing
+      </a>
+
+      <div class="nav-label">Agent Implementations</div>
+      <a href="#code-agent" class="nav-item">
+        <span>&#x1F4BB;</span> The CodeAgent & Tools
+        <span class="nav-badge">Part 1</span>
+      </a>
+      <a href="#skills" class="nav-item">
+        <span>&#x1F4DC;</span> Progressive Skill Loading
+        <span class="nav-badge">Part 1</span>
+      </a>
+      <a href="#compaction" class="nav-item">
+        <span>&#x1F9F3;</span> Context Compaction
+        <span class="nav-badge">Part 2</span>
+      </a>
+      <a href="#chess-agent" class="nav-item">
+        <span>&#x265F;</span> The ChessAgent
+        <span class="nav-badge">Part 3</span>
+      </a>
+      <a href="#programmatic" class="nav-item">
+        <span>&#x1F527;</span> Programmatic Tool Calling
+        <span class="nav-badge">Part 3</span>
+      </a>
+
+      <div class="nav-label">Interactive Lab</div>
+      <a href="#lifecycle" class="nav-item">
+        <span>&#x2699;</span> End-to-End Lifecycle
+      </a>
+      <a href="#quiz" class="nav-item">
+        <span>&#x2705;</span> Knowledge Check
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content Body -->
+  <main class="content-area">
+
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="hero-tag">
+        <span>&#x2728;</span> CMU 11-768: Autonomous Agent Systems
+      </div>
+      <h1>Engineering an Autonomous ReAct Agent Harness</h1>
+      <p class="hero-lead">
+        A masterclass walkthrough explaining every moving component, protocol, sandbox tunnel, 
+        and compaction heuristic in this codebase using the <strong>Feynman Technique</strong> — 
+        breaking down state-of-the-art AI agent infrastructure into clear, intuitive mental models.
+      </p>
+
+      <div class="hero-stats">
+        <div class="stat-item">
+          <h3>ReAct</h3>
+          <p>Reason + Act Loop</p>
+        </div>
+        <div class="stat-item">
+          <h3>Modal.com</h3>
+          <p>Isolated Cloud Sandbox</p>
+        </div>
+        <div class="stat-item">
+          <h3>6,000</h3>
+          <p>Compaction Threshold</p>
+        </div>
+        <div class="stat-item">
+          <h3>SWE-Bench</h3>
+          <p>Bug Patching Target</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Chapter 1: Feynman Mental Model -->
+    <section id="philosophy" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x1F9E0; Conceptual Foundation</div>
+        <h2>What Exactly Is an "Agent Harness"?</h2>
+        <p>Before looking at code, let's understand the core problem that creates the need for an agent harness.</p>
+      </div>
+
+      <div class="feynman-box">
+        <div class="feynman-title">
+          <span>&#x1F4A1;</span> The Feynman Analogy: The Brilliant Chef with Amnesia
+        </div>
+        <div class="feynman-content">
+          <p>
+            Imagine a world-class chef who has severe, five-second amnesia. Every time the chef blinks, 
+            they forget who they are, where they are, what recipe they were cooking, and whether the stove is on.
+          </p>
+          <br>
+          <p>
+            An <strong>LLM is like that chef</strong>: it is a stateless probabilistic next-token predictor. 
+            It cannot hold open a terminal session, it cannot run Python in memory across calls, and it cannot see the computer screen.
+          </p>
+          <br>
+          <p>
+            The <strong>Agent Harness is the Sous-Chef standing next to them with a clipboard</strong>:
+            <br>&bull; The sous-chef hands the chef a binder: <em>"Here is who you are, here is the recipe, and here is what you did 3 seconds ago."</em> (<strong>Prompt Construction</strong>)
+            <br>&bull; The chef reads it and says: <em>"I need to check if the water is boiling."</em> (<strong>Tool Call Action</strong>)
+            <br>&bull; The chef blinks and forgets everything. 
+            <br>&bull; The sous-chef walks to the pot, checks the water, and writes in the binder: <em>"Water is boiling at 100&deg;C."</em> (<strong>Observation Execution</strong>)
+            <br>&bull; The sous-chef hands the binder back to the chef. The cycle repeats until dinner is served.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-icon icon-blue">&#x1F4AC;</div>
+          <h3>The Stateless API</h3>
+          <p>LLM endpoints (OpenAI/OpenRouter) keep no conversation history between HTTP POST calls. Every turn requires re-sending the whole universe of prior steps.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon icon-cyan">&#x2699;</div>
+          <h3>The Agent Harness</h3>
+          <p>The Python driver that maintains the timeline state, orchestrates model requests, dispatches bash commands to cloud sandboxes, and formats outputs.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon icon-emerald">&#x1F6E1;</div>
+          <h3>The Sandbox Environment</h3>
+          <p>A disposable remote Linux container running on Modal's cloud where agent code and bash commands execute safely without risking the host machine.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 2: The ReAct Engine -->
+    <section id="react-loop" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x1F504; Core Mechanism</div>
+        <h2>The ReAct (Reason + Act) Heartbeat</h2>
+        <p>How <code>Agent.run()</code> in <code>base.py</code> drives the alternating cycle of thoughts, actions, and observations.</p>
+      </div>
+
+      <!-- Animated SVG Diagram of ReAct Cycle -->
+      <div class="interactive-stage">
+        <div class="stage-header">
+          <h4><span>&#x25B6;</span> Animated ReAct Execution Pulse</h4>
+          <span style="font-size: 0.8rem; color: var(--accent-cyan);">Live Execution Sequence</span>
+        </div>
+
+        <div class="svg-diagram-container">
+          <svg class="diagram" viewBox="0 0 880 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background connecting track -->
+            <path d="M 120 170 H 760" stroke="#1f2937" stroke-width="6" stroke-linecap="round"/>
+            <path class="animated-path" d="M 120 170 H 760" stroke="url(#trackGradient)" stroke-width="4" stroke-linecap="round"/>
+
+            <defs>
+              <linearGradient id="trackGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#3b82f6" />
+                <stop offset="50%" stop-color="#06b6d4" />
+                <stop offset="100%" stop-color="#10b981" />
+              </linearGradient>
+              <linearGradient id="boxGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1e293b" />
+                <stop offset="100%" stop-color="#0f172a" />
+              </linearGradient>
+            </defs>
+
+            <!-- Node 1: Prompt Construction -->
+            <g transform="translate(40, 90)">
+              <rect width="160" height="160" rx="16" fill="url(#boxGrad1)" stroke="#3b82f6" stroke-width="2" class="animated-node"/>
+              <text x="80" y="45" fill="#3b82f6" font-family="Outfit" font-weight="700" font-size="14" text-anchor="middle">STEP 1</text>
+              <text x="80" y="75" fill="#fff" font-family="Outfit" font-weight="600" font-size="16" text-anchor="middle">build_prompt()</text>
+              <text x="80" y="105" fill="#9ca3af" font-family="Plus Jakarta Sans" font-size="11" text-anchor="middle">System + Task</text>
+              <text x="80" y="125" fill="#9ca3af" font-family="Plus Jakarta Sans" font-size="11" text-anchor="middle">+ History Array</text>
+            </g>
+
+            <!-- Arrow 1 to 2 -->
+            <path d="M 200 170 L 250 170" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+
+            <!-- Node 2: Query Model -->
+            <g transform="translate(260, 90)">
+              <rect width="160" height="160" rx="16" fill="url(#boxGrad1)" stroke="#6366f1" stroke-width="2" class="animated-node"/>
+              <text x="80" y="45" fill="#6366f1" font-family="Outfit" font-weight="700" font-size="14" text-anchor="middle">STEP 2</text>
+              <text x="80" y="75" fill="#fff" font-family="Outfit" font-weight="600" font-size="16" text-anchor="middle">query_model()</text>
+              <text x="80" y="105" fill="#9ca3af" font-family="Plus Jakarta Sans" font-size="11" text-anchor="middle">Chat Completions</text>
+              <text x="80" y="125" fill="#a78bfa" font-family="Fira Code" font-size="11" text-anchor="middle">tool_calls: [...]</text>
+            </g>
+
+            <!-- Node 3: Execute in Sandbox -->
+            <g transform="translate(480, 90)">
+              <rect width="160" height="160" rx="16" fill="url(#boxGrad1)" stroke="#06b6d4" stroke-width="2" class="animated-node"/>
+              <text x="80" y="45" fill="#06b6d4" font-family="Outfit" font-weight="700" font-size="14" text-anchor="middle">STEP 3</text>
+              <text x="80" y="75" fill="#fff" font-family="Outfit" font-weight="600" font-size="16" text-anchor="middle">execute_tools()</text>
+              <text x="80" y="105" fill="#9ca3af" font-family="Plus Jakarta Sans" font-size="11" text-anchor="middle">Modal Sandbox</text>
+              <text x="80" y="125" fill="#67e8f9" font-family="Fira Code" font-size="11" text-anchor="middle">env.execute(cmd)</text>
+            </g>
+
+            <!-- Node 4: Observation Append -->
+            <g transform="translate(700, 90)">
+              <rect width="150" height="160" rx="16" fill="url(#boxGrad1)" stroke="#10b981" stroke-width="2" class="animated-node"/>
+              <text x="75" y="45" fill="#10b981" font-family="Outfit" font-weight="700" font-size="14" text-anchor="middle">STEP 4</text>
+              <text x="75" y="75" fill="#fff" font-family="Outfit" font-weight="600" font-size="16" text-anchor="middle">Observation</text>
+              <text x="75" y="105" fill="#9ca3af" font-family="Plus Jakarta Sans" font-size="11" text-anchor="middle">role: "tool"</text>
+              <text x="75" y="125" fill="#34d399" font-family="Fira Code" font-size="11" text-anchor="middle">tool_call_id linked</text>
+            </g>
+
+            <!-- Loop back path -->
+            <path d="M 775 250 C 775 310, 120 310, 120 250" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,4" fill="none"/>
+            <text x="450" y="305" fill="#a78bfa" font-family="Plus Jakarta Sans" font-size="12" font-weight="600" text-anchor="middle">Repeat until self.finished == True or step_limit exceeded &#x21A9;</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- The Code Behind the Loop -->
+      <div class="code-container">
+        <div class="code-header">
+          <div class="code-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span class="code-filename">src/assignment/agent/base.py &bull; Agent.run()</span>
+        </div>
+        <pre class="code-block"><code><span class="kwd">def</span> <span class="fn">run</span>(<span class="var">self</span>) -> <span class="cls">None</span>:
+    <span class="str">"""Run ReAct steps, always saving the trajectory and stopping Modal."""</span>
+    <span class="kwd">try</span>:
+        <span class="kwd">while not</span> <span class="var">self</span>.finished:
+            <span class="cmt"># 1. Budget check</span>
+            <span class="kwd">if</span> <span class="var">self</span>.steps_taken >= <span class="var">self</span>.step_limit:
+                <span class="kwd">raise</span> <span class="cls">StepLimitError</span>(<span class="str">f"Exceeded step limit of {self.step_limit}"</span>)
+
+            <span class="cmt"># 2. Context compaction hook (Part 2)</span>
+            <span class="var">self</span>.<span class="fn">maybe_compact_context</span>()
+
+            <span class="cmt"># 3. Query LLM via OpenAI chat completions</span>
+            message = <span class="var">self</span>.<span class="fn">query_language_model</span>()
+            tool_calls = message.<span class="fn">get</span>(<span class="str">"tool_calls"</span>)
+
+            <span class="cmt"># 4. Branch: Did the model decide to act, or just reflect?</span>
+            <span class="kwd">if</span> tool_calls:
+                <span class="var">self</span>.messages.<span class="fn">append</span>(message)
+                observations = <span class="var">self</span>.<span class="fn">execute_tool_calls</span>(tool_calls)
+                <span class="var">self</span>.messages.<span class="fn">extend</span>(observations)
+            <span class="kwd">else</span>:
+                <span class="var">self</span>.messages.<span class="fn">append</span>(message)
+    <span class="kwd">finally</span>:
+        <span class="cmt"># Guaranteed cleanup: trajectory written & sandbox safely stopped</span>
+        <span class="var">self</span>.<span class="fn">_save_logs_and_stop_env</span>()</code></pre>
+      </div>
+    </section>
+
+    <!-- Chapter 3: Modal Cloud Sandboxing -->
+    <section id="sandboxing" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x1F6E1; Security & Execution Architecture</div>
+        <h2>Modal Cloud Sandboxing & SWE-ReX</h2>
+        <p>Why we run commands on a remote cloud cluster instead of your local machine.</p>
+      </div>
+
+      <div class="feynman-box">
+        <div class="feynman-title">
+          <span>&#x1F4A1;</span> The Feynman Analogy: The Hazardous Chemistry Lab
+        </div>
+        <div class="feynman-content">
+          <p>
+            When scientists experiment with toxic viruses or volatile chemicals, they don’t test them on their kitchen table. 
+            They build a <strong>negative-pressure clean room (glove box)</strong> with thick glass and sealed gloves.
+          </p>
+          <br>
+          <p>
+            An autonomous coding agent generates shell commands dynamically. What if the model runs:
+            <code>rm -rf /</code>, installs a compromised pip package, or spawns a fork bomb?
+          </p>
+          <br>
+          <p>
+            <strong>Modal is the quarantine glove box</strong>:
+            Your agent process runs locally on your laptop, but every single bash command, pytest invocation, 
+            and chess server runs thousands of miles away inside an ephemeral Linux container on Modal’s cloud. 
+            If the agent accidentally blows up the container, your local machine remains 100% pristine.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon icon-purple">&#x1F510;</div>
+          <h3>Encrypted TLS Tunneling</h3>
+          <p>
+            Inside the Modal container, SWE-ReX starts a remote control daemon. Modal opens an encrypted TLS port tunnel 
+            giving your local <code>Environment</code> an HTTPS endpoint to execute commands asynchronously.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon icon-emerald">&#x267B;&#xFE0F;</div>
+          <h3>The Pinned Testbed Image</h3>
+          <p>
+            Every evaluation run boots from a deterministic base image built from <code>tasks/chess-terminal-move</code>. 
+            <code>verify_source()</code> validates the git commit SHA before building to guarantee 100% test reproducibility.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 4: Progressive Skill Disclosure -->
+    <section id="skills" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x1F4DC; Progressive Disclosure</div>
+        <h2>The 2-Tier Skill Protocol</h2>
+        <p>How agents learn complex specialized workflows without clogging their system prompt.</p>
+      </div>
+
+      <!-- Tabbed Interactive Explainer -->
+      <div class="interactive-stage">
+        <div class="stage-header">
+          <h4><span>&#x1F4CB;</span> Two-Level Progressive Disclosure</h4>
+          <span style="font-size: 0.8rem; color: var(--accent-amber);">Agent Skills Protocol</span>
+        </div>
+
+        <div class="stepper-nav">
+          <button class="step-btn active" onclick="switchSkillTab(0)">1. The Raw Skill File (SKILL.md)</button>
+          <button class="step-btn" onclick="switchSkillTab(1)">2. Level 1: System Prompt Catalog</button>
+          <button class="step-btn" onclick="switchSkillTab(2)">3. Level 2: On-Demand Invocation</button>
+        </div>
+
+        <div id="skill-pane-0" class="step-pane active">
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            A skill folder (e.g. <code>tasks/code-skills/submit-task/</code>) contains a single <code>SKILL.md</code> file with YAML frontmatter at the top:
+          </p>
+          <div class="code-container">
+            <pre class="code-block"><code><span class="cmt">---</span>
+<span class="kwd">name</span>: <span class="str">submit-task</span>
+<span class="kwd">description</span>: <span class="str">When the task is complete, take the required steps to submit the solution. DO NOT submit without invoking this skill.</span>
+<span class="cmt">---</span>
+
+When you have finished, you must submit your changes as a git patch, in three separate steps:
+# Step 1: Create the patch file (git diff -- file1 > patch.txt)
+# Step 2: Verify patch.txt contains valid diff headers (--- a/ and +++ b/)
+# Step 3: Call send_message with your summary</code></pre>
+          </div>
+        </div>
+
+        <div id="skill-pane-1" class="step-pane">
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            <code>load_skills()</code> parses only the YAML header. The prompt receives <strong>only the name and description</strong>. 
+            The instructions to write <code>patch.txt</code> are intentionally kept hidden!
+          </p>
+          <div class="code-container">
+            <pre class="code-block"><code><span class="tag">&lt;skills&gt;</span>
+name: submit-task
+description: When the task is complete, take the required steps to submit the solution. DO NOT submit without invoking this skill.
+<span class="tag">&lt;/skills&gt;</span></code></pre>
+          </div>
+        </div>
+
+        <div id="skill-pane-2" class="step-pane">
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            When the agent fixes the bug, it calls <code>invoke_skill(name="submit-task")</code>. Only then does the harness return the complete text as a tool observation!
+          </p>
+          <div class="code-container">
+            <pre class="code-block"><code><span class="cmt"># Agent action:</span>
+<span class="cls">Assistant</span>: <span class="str">"I have fixed the chess terminal bug. Let me load the submission instructions."</span>
+<span class="fn">invoke_skill</span>(<span class="kwd">name</span>=<span class="str">"submit-task"</span>)
+
+<span class="cmt"># Environment Observation returned:</span>
+<span class="cls">Tool</span> (<span class="str">call_id="call_99"</span>): <span class="str">"Step 1: git diff -- ... > patch.txt\nStep 2: verify...\nStep 3: call send_message"</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 5: Context Compaction -->
+    <section id="compaction" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x1F9F3; Memory Engineering</div>
+        <h2>Context Compaction: The Detective's Notebook</h2>
+        <p>How agents solve 100-turn tasks on SWE-bench without crashing into the LLM context limit.</p>
+      </div>
+
+      <div class="feynman-box">
+        <div class="feynman-title">
+          <span>&#x1F4A1;</span> The Feynman Analogy: The Detective's Pocket Notebook
+        </div>
+        <div class="feynman-content">
+          <p>
+            Imagine a homicide detective investigating a case for three months. If they carried a verbatim transcript 
+            of every single phone call, coffee receipt, and witness interrogation everywhere they went, their briefcase 
+            would weigh 50 pounds, and finding the culprit’s license plate would take hours.
+          </p>
+          <br>
+          <p>
+            Instead, good detectives maintain a <strong>case summary notebook</strong>:
+            <br>&bull; <em>"Suspect A verified at airport at 4 PM (alibi confirmed)."</em>
+            <br>&bull; <em>"Fingerprint on gun matches suspect B."</em>
+            <br>&bull; <em>"Next step: search apartment B."</em>
+          </p>
+          <br>
+          <p>
+            <strong>Context Compaction is that detective's notebook</strong>:
+            When our prompt grows past 6,000 tokens, <code>Agent.compact_context()</code> prompts the LLM to summarize 
+            all older commands, failed hypotheses, and file edits into structured working memory, while keeping 
+            the <strong>original instructions</strong> and the <strong>most recent tool step</strong> verbatim.
+          </p>
+        </div>
+      </div>
+
+      <!-- Compaction Architecture Visualizer -->
+      <div class="grid-2">
+        <div class="card" style="border-left: 4px solid var(--accent-rose);">
+          <h3>Before Compaction (Bloated)</h3>
+          <p style="font-family: var(--font-code); font-size: 0.8rem; line-height: 1.8; color: #f87171;">
+            [System Prompt] &bull; 800 tokens<br>
+            [Task Prompt] &bull; 200 tokens<br>
+            [Step 1 Action + 500-line pytest dump] &bull; 3,200 tokens<br>
+            [Step 2 Action + 300-line git diff] &bull; 2,100 tokens<br>
+            [Step 3 Action + file inspect] &bull; 1,900 tokens<br>
+            ------------------------------------<br>
+            <strong>Total Active Context: 8,200 Tokens (Exceeded Threshold!)</strong>
+          </p>
+        </div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-emerald);">
+          <h3>After Compaction (Compact)</h3>
+          <p style="font-family: var(--font-code); font-size: 0.8rem; line-height: 1.8; color: #34d399;">
+            [System Prompt] &bull; 800 tokens (VERBATIM)<br>
+            [Task Prompt] &bull; 200 tokens (VERBATIM)<br>
+            [Working Memory Summary] &bull; 250 tokens (FACTS ONLY)<br>
+            [Step 3 Action + file inspect] &bull; 1,900 tokens (RECENT STEP)<br>
+            ------------------------------------<br>
+            <strong>Total Active Context: 3,150 Tokens (61% Reduction!)</strong>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 6: Programmatic Chess Agent -->
+    <section id="chess-agent" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x265F; Domain Specialization</div>
+        <h2>The ChessAgent & Programmatic Tool Calling</h2>
+        <p>Empowering models to plan via code execution rather than token hallucination.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon icon-rose">&#x274C; Naive Agent: Mental Lookahead</div>
+          <p>
+            An LLM playing chess from prompt text must hallucinate piece coordinates in its attention heads. 
+            It cannot look ahead 3 plies without making illegal moves, getting pieces pinned, or losing its queen.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon icon-emerald">&#x2705; Programmatic Tool: Search via Code</div>
+          <p>
+            With <code>run_python</code>, the agent writes a Python script containing a minimax search or heuristic loop. 
+            The script executes inside the sandbox beside the chess server, calling <code>simulate_move()</code> in a loop.
+          </p>
+        </div>
+      </div>
+
+      <div class="code-container">
+        <div class="code-header">
+          <div class="code-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span class="code-filename">How Programmatic Tool Calling Executes (sandbox_python.py)</span>
+        </div>
+        <pre class="code-block"><code><span class="cmt"># 1. Model outputs Python code in run_python tool argument:</span>
+code = <span class="str">"""
+best_move = None
+best_score = -999
+for m in ["e2e4", "d2d4", "g1f3"]:
+    state = simulate_move(fen, m)
+    score = len(state['legal_moves']) + (10 if state['in_check'] else 0)
+    if score > best_score:
+        best_score = score
+        best_move = m
+play_move(best_move)
+"""</span>
+
+<span class="cmt"># 2. Local agent base64 encodes the code string (preventing shell quote escapes):</span>
+encoded = base64.b64encode(code.encode()).decode()
+
+<span class="cmt"># 3. Executes on remote Modal sandbox:</span>
+<span class="var">env</span>.<span class="fn">execute</span>(<span class="str">f"python /opt/assignment/sandbox_python.py 8000 {encoded}"</span>)
+
+<span class="cmt"># 4. sandbox_python.py executes the code with simulate_move/play_move bound to localhost:8000!</span></code></pre>
+      </div>
+    </section>
+
+    <!-- Chapter 7: Knowledge Check Interactive Widget -->
+    <section id="quiz" class="guide-section">
+      <div class="section-header">
+        <div class="section-eyebrow">&#x2705; Mastery Verification</div>
+        <h2>Test Your Understanding</h2>
+        <p>Interactive knowledge checks based on key architectural design decisions.</p>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-title">
+          <span>&#x2753;</span> Question 1: Recoverable Errors in ReAct
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+          Why must <code>CodeAgent.execute_tool_calls()</code> return an observation message with <code>&lt;error&gt;</code> 
+          instead of raising a Python exception when the model outputs malformed JSON?
+        </p>
+
+        <div class="quiz-options" id="q1-opts">
+          <div class="quiz-opt" onclick="checkQuiz(1, 0)">
+            <span>A</span> To save memory in the Python runtime.
+          </div>
+          <div class="quiz-opt" onclick="checkQuiz(1, 1)">
+            <span>B</span> Because raising an exception crashes the agent loop, whereas an error observation allows the LLM to inspect the syntax mistake and retry on the next turn.
+          </div>
+          <div class="quiz-opt" onclick="checkQuiz(1, 2)">
+            <span>C</span> Because Modal cloud sandboxes only accept valid JSON.
+          </div>
+        </div>
+
+        <div id="q1-feedback" class="quiz-feedback"></div>
+      </div>
+
+      <div class="quiz-card">
+        <div class="quiz-title">
+          <span>&#x2753;</span> Question 2: Context Compaction Boundary
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+          When <code>Agent.compact_context()</code> replaces old turns with a summarized working memory, why MUST the original system and task prompts remain untouched?
+        </p>
+
+        <div class="quiz-options" id="q2-opts">
+          <div class="quiz-opt" onclick="checkQuiz(2, 0)">
+            <span>A</span> Because summarizing the goal or constraints causes "instruction drift," leading the agent to forget what bug it was supposed to fix or what rules apply.
+          </div>
+          <div class="quiz-opt" onclick="checkQuiz(2, 1)">
+            <span>B</span> Because the OpenAI API rejects prompts that change the system message.
+          </div>
+          <div class="quiz-opt" onclick="checkQuiz(2, 2)">
+            <span>C</span> To prevent git merge conflicts with the testbed repository.
+          </div>
+        </div>
+
+        <div id="q2-feedback" class="quiz-feedback"></div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>Autonomous AI Agent Harness &bull; Built with ReAct, SWE-ReX, and Modal</p>
+      <p style="margin-top: 0.4rem; color: #4b5563;">CMU 11-768 &bull; Advanced Agentic Coding Architecture</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Tab switcher for Skill protocol
+  function switchSkillTab(index) {
+    document.querySelectorAll('.stepper-nav .step-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.step-pane').forEach((pane, i) => {
+      pane.classList.toggle('active', i === index);
+    });
+  }
+
+  // Interactive Quiz Validator
+  const quizAnswers = {
+    1: {
+      correctIndex: 1,
+      explanation: "Exactly! In autonomous systems, failure is an observation. If the harness crashes, the run terminates with 0 points. If the error is returned as an observation, the LLM reads: '<error>Invalid JSON</error>' and corrects its tool call!"
+    },
+    2: {
+      correctIndex: 0,
+      explanation: "Spot on! If you summarize the original prompt, the summary might lose critical details like 'do not commit files' or 'output patch.txt'. Preserving the opening messages verbatim prevents catastrophic instruction drift!"
+    }
+  };
+
+  function checkQuiz(qNum, selectedIndex) {
+    const qData = quizAnswers[qNum];
+    const opts = document.querySelectorAll(`#q${qNum}-opts .quiz-opt`);
+    const feedback = document.getElementById(`q${qNum}-feedback`);
+
+    opts.forEach((opt, idx) => {
+      opt.classList.remove('correct', 'wrong');
+      if (idx === qData.correctIndex) {
+        opt.classList.add('correct');
+      } else if (idx === selectedIndex) {
+        opt.classList.add('wrong');
+      }
+    });
+
+    feedback.style.display = 'block';
+    if (selectedIndex === qData.correctIndex) {
+      feedback.style.background = 'rgba(16, 185, 129, 0.15)';
+      feedback.style.color = '#6ee7b7';
+      feedback.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+      feedback.innerHTML = `<strong>&#x2705; Correct!</strong> ${qData.explanation}`;
+    } else {
+      feedback.style.background = 'rgba(244, 63, 94, 0.15)';
+      feedback.style.color = '#fca5a5';
+      feedback.style.border = '1px solid rgba(244, 63, 94, 0.3)';
+      feedback.innerHTML = `<strong>&#x274C; Not quite.</strong> ${qData.explanation}`;
+    }
+  }
+
+  // Active navigation highlight on scroll
+  const sections = document.querySelectorAll('.guide-section');
+  const navLinks = document.querySelectorAll('.nav-item');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(section => {
+      const sectionTop = section.offsetTop - 120;
+      if (window.scrollY >= sectionTop) {
+        current = section.getAttribute('id');
+      }
+    });
+
+    navLinks.forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === `#${current}`) {
+        link.classList.add('active');
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

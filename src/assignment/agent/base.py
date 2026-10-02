@@ -30,7 +30,14 @@ MAX_OBSERVATION_CHARS = 10_000
 # TODO(Part 2): Write instructions that make the model produce concise working
 # memory for a software agent. The prompt should preserve concrete progress,
 # failures, test results, constraints, and next steps without copying raw output.
-COMPACTION_SYSTEM_PROMPT = ""
+COMPACTION_SYSTEM_PROMPT = """You are an expert memory consolidation assistant for an autonomous software agent. Your job is to condense the provided execution history into a dense, factual working memory.
+Guidelines:
+1. Preserve the primary objective, constraints, and requirements.
+2. Explicitly list all files inspected, edited, created, or deleted.
+3. Summarize key commands executed along with concrete results (specific test failures, errors, exit codes).
+4. Document failed approaches and dead ends so the agent does not repeat them.
+5. Highlight any active blockers and immediate next steps.
+6. Do NOT copy large raw outputs or file dumps verbatim. Be concise, structured, and factual."""
 
 
 class StepLimitError(Exception):
@@ -310,7 +317,24 @@ class Agent:
 
         raise NotImplementedError
 
-        compaction_prompt = []
+        # 1. Find the cutoff index to separate old prefix from recent steps
+        assistant_indices = [
+            i for i, m in enumerate(self.messages) if m.get("role") == "assistant"
+        ]
+        cutoff = assistant_indices[-self.compaction_keep_recent_steps]
+        old_messages = self.messages[:cutoff]
+        recent_messages = self.messages[cutoff:]
+        # 2. Build the compaction prompt for the LLM
+        compaction_prompt = [
+            {"role": "system", "content": COMPACTION_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"Task Objective:\n{self.task_prompt}\n\n"
+                    f"Execution History to summarize:\n{json.dumps(old_messages, indent=2)}"
+                ),
+            },
+        ]
 
         ### Do not modify this section ###
         compaction_response = self.client.chat.completions.create(
@@ -376,6 +400,7 @@ class Agent:
             while not self.finished: 
                 if self.steps_taken >= self.step_limit: 
                     raise StepLimitError(f"Exceeded step limit of {self.step_limit}")
+                self.maybe_compact_context()
                 message = self.query_language_model()
                 tool_calls = message.get("tool_calls")
                 if tool_calls:
